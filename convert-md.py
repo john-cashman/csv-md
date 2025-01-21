@@ -1,17 +1,19 @@
 import streamlit as st
 import pandas as pd
 import os
-import io
 
 # Function to convert CSV to Markdown files
 def convert_csv_to_md(csv_file):
-    # Read the CSV file using pandas
     try:
+        # Directly read the CSV from the uploaded file-like object
         df = pd.read_csv(csv_file)
     except pd.errors.EmptyDataError:
         st.error("The CSV file is empty or has an invalid format.")
         return []
-
+    except Exception as e:
+        st.error(f"An error occurred while reading the CSV file: {e}")
+        return []
+    
     # Create a folder to store the converted Markdown files
     output_folder = 'converted_md_files'
     os.makedirs(output_folder, exist_ok=True)
@@ -44,16 +46,25 @@ def convert_csv_to_md(csv_file):
 st.title("CSV to Markdown Converter")
 
 st.markdown("""
-Upload a CSV file, and the app will convert each row (contact) into a separate Markdown file. hi
+Upload a CSV file, and the app will convert each row (contact) into a separate Markdown file.
 """)
 
 # File uploader widget
 csv_file = st.file_uploader("Choose a CSV file", type="csv")
 
 if csv_file:
-    # Read the uploaded CSV file (use 'io.BytesIO' to treat the uploaded file as a file object)
+    # Debugging: Show the file type and size
+    st.write(f"File type: {csv_file.type}")
+    st.write(f"File size: {csv_file.size} bytes")
+
+    # Debugging: Display the raw file content (first 500 characters)
+    file_content = csv_file.getvalue().decode('utf-8', errors='ignore')[:500]
+    st.write("Raw file content preview (first 500 characters):")
+    st.write(file_content)
+
+    # Read the uploaded CSV file (use the file-like object directly)
     try:
-        df = pd.read_csv(io.BytesIO(csv_file.read()))
+        df = pd.read_csv(csv_file)
         st.write("CSV Preview", df.head())  # Show the first few rows of the CSV for preview
     except pd.errors.EmptyDataError:
         st.error("The CSV file is empty or cannot be read.")
@@ -63,7 +74,7 @@ if csv_file:
     # Button to trigger conversion to Markdown
     if st.button('Convert to Markdown'):
         # Convert the uploaded CSV file into Markdown files
-        md_files = convert_csv_to_md(io.BytesIO(csv_file.read()))
+        md_files = convert_csv_to_md(csv_file)
 
         # Inform the user that the conversion is complete
         if md_files:
