@@ -4,9 +4,13 @@ import os
 import io
 
 # Function to convert CSV to Markdown files
-def convert_csv_to_md(csv_data):
-    # Read the CSV data into a Pandas DataFrame
-    df = pd.read_csv(csv_data)
+def convert_csv_to_md(csv_file):
+    # Read the CSV file using pandas
+    try:
+        df = pd.read_csv(csv_file)
+    except pd.errors.EmptyDataError:
+        st.error("The CSV file is empty or has an invalid format.")
+        return []
 
     # Create a folder to store the converted Markdown files
     output_folder = 'converted_md_files'
@@ -47,26 +51,32 @@ Upload a CSV file, and the app will convert each row (contact) into a separate M
 csv_file = st.file_uploader("Choose a CSV file", type="csv")
 
 if csv_file:
-    # Show a preview of the CSV
-    df = pd.read_csv(csv_file)
-    st.write("CSV Preview", df.head())
+    # Read the uploaded CSV file (use 'io.BytesIO' to treat the uploaded file as a file object)
+    try:
+        df = pd.read_csv(io.BytesIO(csv_file.read()))
+        st.write("CSV Preview", df.head())  # Show the first few rows of the CSV for preview
+    except pd.errors.EmptyDataError:
+        st.error("The CSV file is empty or cannot be read.")
+    except Exception as e:
+        st.error(f"An error occurred while reading the file: {e}")
 
     # Button to trigger conversion to Markdown
     if st.button('Convert to Markdown'):
         # Convert the uploaded CSV file into Markdown files
-        md_files = convert_csv_to_md(csv_file)
+        md_files = convert_csv_to_md(io.BytesIO(csv_file.read()))
 
         # Inform the user that the conversion is complete
-        st.write("Conversion complete! You can now download the individual Markdown files:")
+        if md_files:
+            st.write("Conversion complete! You can now download the individual Markdown files:")
 
-        # Provide download links for each generated Markdown file
-        for md_file in md_files:
-            with open(md_file, 'r', encoding='utf-8') as file:
-                md_content = file.read()
+            # Provide download links for each generated Markdown file
+            for md_file in md_files:
+                with open(md_file, 'r', encoding='utf-8') as file:
+                    md_content = file.read()
 
-            st.download_button(
-                label=f"Download {os.path.basename(md_file)}",
-                data=md_content,
-                file_name=os.path.basename(md_file),
-                mime="text/markdown"
-            )
+                st.download_button(
+                    label=f"Download {os.path.basename(md_file)}",
+                    data=md_content,
+                    file_name=os.path.basename(md_file),
+                    mime="text/markdown"
+                )
