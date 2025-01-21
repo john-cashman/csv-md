@@ -1,99 +1,54 @@
 import streamlit as st
 import pandas as pd
-import io
 
-# Function to convert CSV to a single markdown file
-def convert_csv_to_markdown(csv_file):
-    try:
-        # Read the CSV file using pandas
-        df = pd.read_csv(csv_file)
-    except Exception as e:
-        st.error(f"Error reading CSV file: {e}")
-        return None
-    
-    # Initialize markdown content
-    markdown_content = ""
-    
-    # Loop over each row in the dataframe and convert it into a markdown page
-    for index, row in df.iterrows():
-        contact_name = row.get('Name', f'Contact_{index}')  # Use 'Name' column as title or fallback to 'Contact_{index}'
-        
-        # Add a markdown page for each row
-        markdown_content += f"# {contact_name}\n\n"  # Use 'Name' for the page title (can be customized)
-        
-        # Add each column as a key-value pair in markdown format
-        for column, value in row.items():
-            markdown_content += f"**{column}:** {value}\n\n"
-        
-        # Add a page separator (---) to separate each contact's markdown page
-        markdown_content += "\n---\n\n"
-    
-    return markdown_content
+# Function to convert article title and body to Markdown
+def convert_to_markdown(title, body):
+    return f"# {title}\n\n{body}"
 
-# Streamlit UI
-st.title("CSV to Markdown Converter")
+# Streamlit app
+def main():
+    st.title("CSV to Markdown Converter")
 
-st.markdown("""
-Upload a CSV file, and the app will convert each row (contact) into a separate Markdown page.
-""")
+    # File uploader
+    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
-# File uploader widget
-csv_file = st.file_uploader("Choose a CSV file", type="csv")
-
-if csv_file:
-    # Debugging: Read the raw file content and display the first 500 characters
-    raw_content = csv_file.getvalue().decode('utf-8', errors='ignore')[:500]
-    st.write("Raw file content (first 500 characters):")
-    st.write(raw_content)
-    
-    # Try to read the CSV file and display the first few rows
-    try:
-        df = pd.read_csv(csv_file)
-        st.write("CSV Preview", df.head())  # Show a preview of the first few rows
-    except Exception as e:
-        st.error(f"Error reading CSV: {e}")
-    
-    # Try different delimiters if reading the CSV failed
-    if df.empty:  # Check if DataFrame is empty
+    if uploaded_file is not None:
+        # Read the CSV file
         try:
-            st.write("Attempting to read with semicolon delimiter...")
-            df = pd.read_csv(csv_file, delimiter=';')
-            st.write("CSV Preview with semicolon delimiter", df.head())
+            df = pd.read_csv(uploaded_file)
+            st.write("CSV File Preview:")
+            st.dataframe(df)
+
+            # Check for required columns
+            if "article_title" in df.columns and "article_body" in df.columns:
+                st.success("Found required columns: 'article_title' and 'article_body'")
+
+                # Convert each row to Markdown
+                markdown_texts = [
+                    convert_to_markdown(row["article_title"], row["article_body"])
+                    for _, row in df.iterrows()
+                ]
+
+                # Display Markdown
+                st.subheader("Generated Markdown:")
+                for md_text in markdown_texts:
+                    st.markdown(md_text)
+                    st.markdown("---")
+
+                # Option to download all markdowns
+                full_markdown = "\n\n---\n\n".join(markdown_texts)
+                st.download_button(
+                    label="Download All as Markdown",
+                    data=full_markdown,
+                    file_name="articles.md",
+                    mime="text/markdown",
+                )
+            else:
+                st.error(
+                    "The uploaded CSV file must contain 'article_title' and 'article_body' columns."
+                )
         except Exception as e:
-            st.error(f"Error reading CSV with semicolon delimiter: {e}")
-        
-    # Handle missing headers if the first row is not a header
-    if df.empty:  # If still empty, try reading without headers
-        try:
-            st.write("Attempting to read without headers...")
-            df = pd.read_csv(csv_file, header=None)
-            df.columns = ['Name', 'Email', 'Phone', 'Address']  # Example, adjust to your columns
-            st.write("CSV Preview without header", df.head())
-        except Exception as e:
-            st.error(f"Error reading CSV without header: {e}")
+            st.error(f"Error processing file: {e}")
 
-    # Try to read with a different encoding if the previous attempts failed
-    if df.empty:
-        try:
-            st.write("Attempting to read with utf-8-sig encoding...")
-            df = pd.read_csv(csv_file, encoding='utf-8-sig')
-            st.write("CSV Preview with utf-8-sig encoding", df.head())
-        except Exception as e:
-            st.error(f"Error reading CSV with utf-8-sig encoding: {e}")
-
-    # Button to trigger conversion to Markdown
-    if not df.empty and st.button('Convert to Markdown'):
-        # Convert the uploaded CSV file into Markdown content
-        markdown_content = convert_csv_to_markdown(csv_file)
-
-        if markdown_content:
-            # Provide a download button for the generated Markdown file
-            st.write("Conversion complete! Download your Markdown file below:")
-
-            # Provide the download button
-            st.download_button(
-                label="Download Markdown File",
-                data=markdown_content,
-                file_name="contacts.md",
-                mime="text/markdown"
-            )
+if __name__ == "__main__":
+    main()
