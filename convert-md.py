@@ -4,10 +4,38 @@ import os
 import zipfile
 from io import BytesIO
 import re
+from bs4 import BeautifulSoup
 
 # Function to convert article title and body to Markdown
 def convert_to_markdown(title, body):
+    # Parse the body for HTML callouts and convert them
+    body = convert_callouts_to_markdown(body)
     return f"# {title}\n\n{body}"
+
+# Function to convert HTML callouts to Markdown {% hint style="info" %}
+def convert_callouts_to_markdown(html_body):
+    soup = BeautifulSoup(html_body, "html.parser")
+    
+    # Find all divs with the class 'callout callout--transparent'
+    callouts = soup.find_all("div", class_="callout callout--transparent")
+    
+    for callout in callouts:
+        h4_tag = callout.find("h4", class_="callout__title")
+        p_tag = callout.find("p")
+        
+        if h4_tag and p_tag:
+            title = h4_tag.get_text(strip=True)
+            content = p_tag.get_text(strip=True)
+            
+            # Convert to the {% hint style="info" %} format
+            hint_markdown = f"\n{% hint style=\"info\" %}\n**{title}**\n\n{content}\n{% endhint %}\n"
+            
+            # Replace the callout HTML with the Markdown version
+            callout.insert_before(hint_markdown)
+            callout.decompose()  # Remove the original HTML callout
+    
+    # Return the modified HTML as Markdown
+    return str(soup)
 
 # Function to save markdown files and create a zip folder
 def create_markdown_zip(df):
