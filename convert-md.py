@@ -27,6 +27,9 @@ def convert_callouts_to_markdown(html_body):
             title = h4_tag.get_text(strip=True)
             content = p_tag.get_text(strip=True)
             
+            # Ensure links are in Markdown format and add spacing between paragraphs and links
+            content = convert_links_to_markdown(content)
+            
             # Convert to the {% hint style="info" %} format
             hint_markdown = f"\n{{% hint style=\"info\" %}}\n**{title}**\n\n{content}\n{{% endhint %}}\n"
             
@@ -36,6 +39,24 @@ def convert_callouts_to_markdown(html_body):
     
     # Return the modified HTML as Markdown
     return str(soup)
+
+# Function to convert links in the text to Markdown format and ensure space between paragraphs and links
+def convert_links_to_markdown(text):
+    # Convert links from HTML <a> tags to Markdown
+    soup = BeautifulSoup(text, "html.parser")
+    
+    for a_tag in soup.find_all("a"):
+        link_text = a_tag.get_text()
+        link_url = a_tag.get("href")
+        
+        # Create Markdown link
+        markdown_link = f"[{link_text}]({link_url})"
+        
+        # Replace the <a> tag with the Markdown link
+        a_tag.replace_with(markdown_link)
+
+    # Ensure a newline between paragraph content and any link
+    return str(soup).replace("\n", "\n\n")
 
 # Function to save markdown files and create a zip folder
 def create_markdown_zip(df):
@@ -102,28 +123,4 @@ def main():
 
             # Check for required columns
             if "article_title" in df.columns and "article_body" in df.columns:
-                st.success("Found required columns: 'article_title' and 'article_body'")
-
-                # Create ZIP of Markdown files
-                zip_buffer = create_markdown_zip(df)
-
-                # Provide download link for the ZIP file
-                st.download_button(
-                    label="Download Markdown Files as ZIP",
-                    data=zip_buffer,
-                    file_name="markdown_files.zip",
-                    mime="application/zip",
-                )
-            else:
-                st.error(
-                    "The uploaded CSV file must contain 'article_title' and 'article_body' columns."
-                )
-        except pd.errors.EmptyDataError:
-            st.error("The CSV file is empty. Please upload a valid file.")
-        except pd.errors.ParserError:
-            st.error("There was an error parsing the CSV file. Please ensure it's properly formatted.")
-        except Exception as e:
-            st.error(f"An unexpected error occurred: {e}")
-
-if __name__ == "__main__":
-    main()
+                st.success("Found required col
