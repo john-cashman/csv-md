@@ -1,80 +1,123 @@
 import streamlit as st
-import pandas as pd
 import os
-import zipfile
+import markdownify
+from bs4 import BeautifulSoup
 from io import BytesIO
+import shutil
+import zipfile
 
-# Function to convert article title and body to Markdown
-def convert_to_markdown(title, body):
-    return f"# {title}\n\n{body}"
 
-# Function to save markdown files and create a zip folder
-def create_markdown_zip(df):
-    # Temporary directory to store markdown files
-    temp_dir = "temp_markdown_files"
-    os.makedirs(temp_dir, exist_ok=True)
+def convert_html_to_markdown(html_content, image_folder, output_folder):
+    """
+    Convert HTML to Markdown and adjust image paths.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
 
-    # Create individual markdown files
-    for index, row in df.iterrows():
-        title = row["article_title"]
-        body = row["article_body"]
-        markdown_content = convert_to_markdown(title, body)
-        
-        # Safe file name creation
-        safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
-        filename = f"{safe_title or 'article'}_{index + 1}.md"
-        
-        with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
-            f.write(markdown_content)
-    
-    # Create a ZIP file containing all markdown files
+    # Update image references in HTML
+    for img in soup.find_all("img"):
+        src = img.get("src")
+        if src:
+            # Get the image name
+            image_name = os.path.basename(src)
+
+            # Update image reference in the output Markdown
+            img["src"] = f"./{image_folder}/{image_name}"
+
+    # Convert the updated HTML to Markdown
+    return markdownify.markdownify(str(soup), heading_style="ATX")
+
+
+def process_folder(input_folder, output_folder_name):
+    """
+    Process a folder of HTML files and images.
+    """
+    # Create an output folder
+    output_folder = os.path.join(input_folder, output_folder_name)
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Create an image subfolder in the output folder
+    image_folder = os.path.join(output_folder, "images")
+    os.makedirs(image_folder, exist_ok=True)
+
+    # Iterate through files in the input folder
+    for file_name in os.listdir(input_folder):
+        input_path = os.path.join(input_folder, file_name)
+
+        if file_name.endswith(".html"):
+            # Read and convert HTML file
+            with open(input_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            markdown_content = convert_html_to_markdown(
+                html_content, "images", output_folder
+            )
+
+            # Save the Markdown file
+            markdown_file_name = f"{os.path.splitext(file_name)[0]}.md"
+            markdown_path = os.path.join(output_folder, markdown_file_name)
+            with open(markdown_path, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+
+        elif file_name.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".svg")):
+            # Copy image files to the images folder
+            shutil.copy(input_path, image_folder)
+
+    return output_folder
+
+
+def zip_output_folder(output_folder):
+    """
+    Compress the output folder into a ZIP file.
+    """
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file_name in os.listdir(temp_dir):
-            zipf.write(os.path.join(temp_dir, file_name), file_name)
-    
-    # Clean up temporary directory
-    for file_name in os.listdir(temp_dir):
-        os.remove(os.path.join(temp_dir, file_name))
-    os.rmdir(temp_dir)
-    
+        for root, _, files in os.walk(output_folder):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, os.path.dirname(output_folder))
+                zipf.write(file_path, arcname)
+
     zip_buffer.seek(0)
     return zip_buffer
 
-# Streamlit app
+
+# Streamlit App
 def main():
-    st.title("CSV to Markdown File Generator")
+    st.title("HTML to Markdown Converter with Images")
 
-    # File uploader
-    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+    # Folder uploader (zip file containing folder structure)
+    uploaded_folder = st.file_uploader(
+        "Upload a ZIP file containing HTML files and images", type=["zip"]
+    )
 
-    if uploaded_file is not None:
-        # Read the CSV file
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.write("CSV File Preview:")
-            st.dataframe(df)
+    if uploaded_folder is not None:
+        with zipfile.ZipFile(uploaded_folder, "r") as zip_ref:
+            # Extract uploaded ZIP to a temporary directory
+            temp_input_folder = "./temp_input"
+            os.makedirs(temp_input_folder, exist_ok=True)
+            zip_ref.extractall(temp_input_folder)
 
-            # Check for required columns
-            if "article_title" in df.columns and "article_body" in df.columns:
-                st.success("Found required columns: 'article_title' and 'article_body'")
+        st.success("Folder extracted successfully!")
 
-                # Create ZIP of Markdown files
-                zip_buffer = create_markdown_zip(df)
+        # Process the folder
+        output_folder_name = "converted_markdown"
+        output_folder = process_folder(temp_input_folder, output_folder_name)
 
-                # Provide download link for the ZIP file
-                st.download_button(
-                    label="Download Markdown Files as ZIP",
-                    data=zip_buffer,
-                    file_name="markdown_files.zip",
-                    mime="application/zip",
-                )
-            else:
-                st.error(
-                    "The uploaded CSV file must contain 'article_title' and 'article_body' columns."
-                )
-        except Exception as e:
-            st.error(f"Error processing file: {e}")
+        # Compress the output folder into a ZIP
+        zip_buffer = zip_output_folder(output_folder)
+
+        # Provide download link for the ZIP file
+        st.download_button(
+            label="Download Converted Markdown Files with Images",
+            data=zip_buffer,
+            file_name="converted_markdown.zip",
+            mime="application/zip",
+        )
+
+        # Clean up temporary directories
+        shutil.rmtree(temp_input_folder)
+        shutil.rmtree(output_folder)
+
 
 if __name__ == "__main__":
     main()
