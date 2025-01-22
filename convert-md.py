@@ -1,26 +1,55 @@
 import streamlit as st
 import pandas as pd
-import html2text
+import os
+import zipfile
+from io import BytesIO
 
-# Initialize html2text converter
-html_to_md = html2text.HTML2Text()
-html_to_md.ignore_links = False  # Set to True if you want to ignore links
+# Function to convert article title and body to Markdown
+def convert_to_markdown(title, body):
+    return f"# {title}\n\n{body}"
 
-def convert_html_to_markdown(html_content):
-    """
-    Converts HTML content to Markdown using html2text.
-    """
-    return html_to_md.handle(html_content)
+# Function to save markdown files and create a zip folder
+def create_markdown_zip(df):
+    # Temporary directory to store markdown files
+    temp_dir = "temp_markdown_files"
+    os.makedirs(temp_dir, exist_ok=True)
+
+    # Create individual markdown files
+    for index, row in df.iterrows():
+        title = row["article_title"]
+        body = row["article_body"]
+        markdown_content = convert_to_markdown(title, body)
+        
+        # Safe file name creation
+        safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+        filename = f"{safe_title or 'article'}_{index + 1}.md"
+        
+        with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+    
+    # Create a ZIP file containing all markdown files
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_name in os.listdir(temp_dir):
+            zipf.write(os.path.join(temp_dir, file_name), file_name)
+    
+    # Clean up temporary directory
+    for file_name in os.listdir(temp_dir):
+        os.remove(os.path.join(temp_dir, file_name))
+    os.rmdir(temp_dir)
+    
+    zip_buffer.seek(0)
+    return zip_buffer
 
 # Streamlit app
 def main():
-    st.title("HTML to Markdown Converter")
+    st.title("CSV to Markdown File Generator")
 
     # File uploader
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
     if uploaded_file is not None:
-        # Read CSV
+        # Read the CSV file
         try:
             df = pd.read_csv(uploaded_file)
             st.write("CSV File Preview:")
@@ -30,40 +59,16 @@ def main():
             if "article_title" in df.columns and "article_body" in df.columns:
                 st.success("Found required columns: 'article_title' and 'article_body'")
 
-                # Convert HTML to Markdown
-                df["markdown_body"] = df["article_body"].apply(convert_html_to_markdown)
+                # Create ZIP of Markdown files
+                zip_buffer = create_markdown_zip(df)
 
-                # Display results
-                st.subheader("Converted Markdown:")
-                for _, row in df.iterrows():
-                    st.markdown(f"### {row['article_title']}")
-                    st.markdown(row["markdown_body"])
-                    st.markdown("---")
-
-                # Allow download of individual Markdown files as a ZIP
-                if st.button("Download Markdown Files as ZIP"):
-                    # Create ZIP of Markdown files
-                    from io import BytesIO
-                    import zipfile
-                    import os
-
-                    # Temporary directory for markdown files
-                    temp_zip = BytesIO()
-                    with zipfile.ZipFile(temp_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
-                        for index, row in df.iterrows():
-                            title = row["article_title"]
-                            markdown_body = row["markdown_body"]
-                            safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
-                            filename = f"{safe_title or 'article'}_{index + 1}.md"
-                            zipf.writestr(filename, f"# {title}\n\n{markdown_body}")
-                    
-                    temp_zip.seek(0)
-                    st.download_button(
-                        label="Download Markdown ZIP",
-                        data=temp_zip,
-                        file_name="markdown_files.zip",
-                        mime="application/zip"
-                    )
+                # Provide download link for the ZIP file
+                st.download_button(
+                    label="Download Markdown Files as ZIP",
+                    data=zip_buffer,
+                    file_name="markdown_files.zip",
+                    mime="application/zip",
+                )
             else:
                 st.error(
                     "The uploaded CSV file must contain 'article_title' and 'article_body' columns."
