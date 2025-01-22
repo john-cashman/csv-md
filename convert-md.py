@@ -42,7 +42,7 @@ def convert_callouts_to_markdown(html_body):
 
 # Function to convert links in the text to Markdown format and ensure space between paragraphs and links
 def convert_links_to_markdown(text):
-    # Convert links from HTML <a> tags to Markdown
+    # Parse the text as HTML
     soup = BeautifulSoup(text, "html.parser")
     
     for a_tag in soup.find_all("a"):
@@ -55,8 +55,13 @@ def convert_links_to_markdown(text):
         # Replace the <a> tag with the Markdown link
         a_tag.replace_with(markdown_link)
 
-    # Ensure a newline between paragraph content and any link
-    return str(soup).replace("\n", "\n\n")
+    # Convert the updated HTML back to text
+    markdown_text = soup.get_text()
+
+    # Ensure a space is added after each link if not present
+    markdown_text = re.sub(r'(\]\([^)]+\))(?=\S)', r'\1 ', markdown_text)
+
+    return markdown_text
 
 # Function to save markdown files and create a zip folder
 def create_markdown_zip(df):
@@ -123,4 +128,24 @@ def main():
 
             # Check for required columns
             if "article_title" in df.columns and "article_body" in df.columns:
-                st.success("Found required col
+                st.success("Found required columns!")
+
+                # Button to generate Markdown files
+                if st.button("Generate Markdown Files"):
+                    zip_buffer = create_markdown_zip(df)
+
+                    # Provide download link for ZIP file
+                    st.success("Markdown files generated successfully!")
+                    st.download_button(
+                        label="Download ZIP file",
+                        data=zip_buffer,
+                        file_name="markdown_files.zip",
+                        mime="application/zip",
+                    )
+            else:
+                st.error("The CSV file must contain `article_title` and `article_body` columns.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
