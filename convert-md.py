@@ -1,10 +1,10 @@
-import streamlit as st
-import pandas as pd
-import os
-import zipfile
-from bs4 import BeautifulSoup
-from io import BytesIO
-import shutil
+
+    import pandas as pd
+    import streamlit as st
+    from bs4 import BeautifulSoup
+    st.write("Dependencies loaded successfully!")
+except Exception as e:
+    st.error(f"Error loading dependencies: {e}")
 
 # Function to convert article title and body to Markdown
 def convert_to_markdown(title, body):
