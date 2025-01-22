@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import zipfile
 from io import BytesIO
+import re
 
 # Function to convert article title and body to Markdown
 def convert_to_markdown(title, body):
@@ -20,8 +21,9 @@ def create_markdown_zip(df):
         body = row["article_body"]
         markdown_content = convert_to_markdown(title, body)
         
-        # Safe file name creation
+        # Safe file name creation (replace spaces with hyphens)
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+        safe_title = safe_title.replace(" ", "-")  # Replace spaces with hyphens
         filename = f"{safe_title or 'article'}_{index + 1}.md"
         
         with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
@@ -44,6 +46,17 @@ def create_markdown_zip(df):
 # Streamlit app
 def main():
     st.title("CSV to Markdown File Generator 2")
+
+    # Displaying instructions
+    st.info("""
+    Upload a CSV file that contains two columns: `article_title` and `article_body`. 
+    The file should look like this:
+
+    | article_title       | article_body        |
+    |---------------------|---------------------|
+    | Sample Title 1      | This is the content |
+    | Sample Title 2      | Another body text   |
+    """)
 
     # File uploader
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
@@ -73,8 +86,12 @@ def main():
                 st.error(
                     "The uploaded CSV file must contain 'article_title' and 'article_body' columns."
                 )
+        except pd.errors.EmptyDataError:
+            st.error("The CSV file is empty. Please upload a valid file.")
+        except pd.errors.ParserError:
+            st.error("There was an error parsing the CSV file. Please ensure it's properly formatted.")
         except Exception as e:
-            st.error(f"Error processing file: {e}")
+            st.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     main()
