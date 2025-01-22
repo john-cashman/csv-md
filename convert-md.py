@@ -43,7 +43,7 @@ def create_markdown_zip(df):
 
 # Streamlit app
 def main():
-    st.title("CSV to Markdown File Generator")
+    st.title("CSV to Markdown File Generator 2")
 
     # File uploader
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
