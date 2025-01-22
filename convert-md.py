@@ -6,6 +6,43 @@ from bs4 import BeautifulSoup
 from io import BytesIO
 import shutil
 
+# Function to convert article title and body to Markdown
+def convert_to_markdown(title, body):
+    return f"# {title}\n\n{body}"
+
+# Function to save Markdown files and create a ZIP folder from a CSV
+def create_markdown_zip(df):
+    # Temporary directory to store markdown files
+    temp_dir = "temp_markdown_files"
+    os.makedirs(temp_dir, exist_ok=True)
+
+    # Create individual markdown files
+    for index, row in df.iterrows():
+        title = row["article_title"]
+        body = row["article_body"]
+        markdown_content = convert_to_markdown(title, body)
+        
+        # Safe file name creation
+        safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+        filename = f"{safe_title or 'article'}_{index + 1}.md"
+        
+        with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+    
+    # Create a ZIP file containing all markdown files
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_name in os.listdir(temp_dir):
+            zipf.write(os.path.join(temp_dir, file_name), file_name)
+    
+    # Clean up temporary directory
+    for file_name in os.listdir(temp_dir):
+        os.remove(os.path.join(temp_dir, file_name))
+    os.rmdir(temp_dir)
+    
+    zip_buffer.seek(0)
+    return zip_buffer
+
 # Function to convert HTML to Markdown
 def convert_html_to_markdown(html_content, image_folder_name):
     soup = BeautifulSoup(html_content, "html.parser")
