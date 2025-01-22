@@ -20,9 +20,10 @@ def create_markdown_zip(df):
         title = row["article_title"]
         body = row["article_body"]
         markdown_content = convert_to_markdown(title, body)
-        
-        # Safe file name creation (replace spaces with hyphens)
+
+        # Safe file name creation: Remove digits and replace spaces with hyphens
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+        safe_title = re.sub(r'\d+', '', safe_title)  # Remove all numbers
         safe_title = safe_title.replace(" ", "-")  # Replace spaces with hyphens
         filename = f"{safe_title or 'article'}_{index + 1}.md"
         
