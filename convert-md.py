@@ -19,13 +19,16 @@ def create_markdown_zip(df):
     for index, row in df.iterrows():
         title = row["article_title"]
         body = row["article_body"]
+        
+        # Remove numbers from the title
+        title = re.sub(r'\d+', '', title)  # Remove all digits from the title
+        
         markdown_content = convert_to_markdown(title, body)
 
         # Safe file name creation: Remove digits and replace spaces with hyphens
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
-        safe_title = re.sub(r'\d+', '', safe_title)  # Remove all numbers
         safe_title = safe_title.replace(" ", "-")  # Replace spaces with hyphens
-        filename = f"{safe_title or 'article'}_{index + 1}.md"
+        filename = f"{safe_title or 'article'}.md"  # Filename without numbers
         
         with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
             f.write(markdown_content)
