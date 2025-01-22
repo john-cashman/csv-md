@@ -6,15 +6,15 @@ from io import BytesIO
 import re
 from bs4 import BeautifulSoup
 
-# Function to convert article title and body to Markdown
-def convert_to_markdown(title, body):
-    # Parse the body for HTML callouts and convert them
-    body = convert_callouts_to_markdown(body)
-    return f"# {title}\n\n{body}"
+# Function to convert article title and Body to Markdown
+def convert_to_markdown(title, Body):
+    # Parse the Body for HTML callouts and convert them
+    Body = convert_callouts_to_markdown(Body)
+    return f"# {title}\n\n{Body}"
 
 # Function to convert HTML callouts to Markdown {% hint style="info" %}
-def convert_callouts_to_markdown(html_body):
-    soup = BeautifulSoup(html_body, "html.parser")
+def convert_callouts_to_markdown(html_Body):
+    soup = BeautifulSoup(html_Body, "html.parser")
     
     # Find all divs with the class 'callout callout--transparent'
     callouts = soup.find_all("div", class_="callout callout--transparent")
@@ -70,20 +70,20 @@ def create_markdown_zip(df):
     os.makedirs(temp_dir, exist_ok=True)
 
     # Ensure the required columns exist
-    if not all(col in df.columns for col in ["Article body", "Section", "Article title"]):
-        st.error("The CSV file must contain `Article body`, `Section`, and `Article title` columns.")
+    if not all(col in df.columns for col in ["Article Body", "Section", "Article title"]):
+        st.error("The CSV file must contain `Article Body`, `Section`, and `Article title` columns.")
         return None
 
     # Iterate over rows to create files
     for index, row in df.iterrows():
         title = row["Article title"]
-        body = row["Article body"]
+        Body = row["Article Body"]
         Section = row["Section"]
         
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
         
-        markdown_content = convert_to_markdown(title, body)
+        markdown_content = convert_to_markdown(title, Body)
 
         # Safe file name creation: Remove digits and replace spaces with hyphens
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
@@ -124,13 +124,13 @@ def main():
 
     # Displaying instructions
     st.info("""
-    Upload a CSV file that contains three columns: `Article body`, `Section`, and `Article title`. 
+    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article title`. 
     The file should look like this:
 
-    | Article title       | Article body        | Section    |
+    | Article title       | Article Body        | Section    |
     |---------------------|---------------------|------------|
     | Sample title 1      | This is the content | Section-1  |
-    | Sample title 2      | Another body text   | Section-2  |
+    | Sample title 2      | Another Body text   | Section-2  |
     """)
 
     # File uploader
@@ -144,7 +144,7 @@ def main():
             st.dataframe(df)
 
             # Check for required columns
-            required_columns = ["Article body", "Section", "Article title"]
+            required_columns = ["Article Body", "Section", "Article title"]
             if all(col in df.columns for col in required_columns):
                 st.success("Found required columns!")
                 
@@ -162,7 +162,7 @@ def main():
                             mime="application/zip",
                         )
             else:
-                st.error("The CSV file must contain `Article body`, `Section`, and `Article title` columns.")
+                st.error("The CSV file must contain `Article Body`, `Section`, and `Article title` columns.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
