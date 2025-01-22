@@ -70,15 +70,15 @@ def create_markdown_zip(df):
     os.makedirs(temp_dir, exist_ok=True)
 
     # Ensure the required columns exist
-    if not all(col in df.columns for col in ["Article Body", "Section", "Article Title"]):
-        st.error("The CSV file must contain `Article Body`, `Section`, and `Article Title` columns.")
+    if not all(col in df.columns for col in ["Article body", "section", "Article title"]):
+        st.error("The CSV file must contain `Article body`, `section`, and `Article title` columns.")
         return None
 
     # Iterate over rows to create files
     for index, row in df.iterrows():
-        title = row["Article Title"]
-        body = row["Article Body"]
-        section = row["Section"]
+        title = row["Article title"]
+        body = row["Article body"]
+        section = row["section"]
         
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
@@ -124,13 +124,13 @@ def main():
 
     # Displaying instructions
     st.info("""
-    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article Title`. 
+    Upload a CSV file that contains three columns: `Article body`, `section`, and `Article title`. 
     The file should look like this:
 
-    | Article Title       | Article Body        | Section    |
+    | Article title       | Article body        | section    |
     |---------------------|---------------------|------------|
-    | Sample Title 1      | This is the content | Section-1  |
-    | Sample Title 2      | Another body text   | Section-2  |
+    | Sample title 1      | This is the content | section-1  |
+    | Sample title 2      | Another body text   | section-2  |
     """)
 
     # File uploader
@@ -144,7 +144,7 @@ def main():
             st.dataframe(df)
 
             # Check for required columns
-            required_columns = ["Article Body", "Section", "Article Title"]
+            required_columns = ["Article body", "section", "Article title"]
             if all(col in df.columns for col in required_columns):
                 st.success("Found required columns!")
                 
@@ -162,7 +162,7 @@ def main():
                             mime="application/zip",
                         )
             else:
-                st.error("The CSV file must contain `Article Body`, `Section`, and `Article Title` columns.")
+                st.error("The CSV file must contain `Article body`, `section`, and `Article title` columns.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
