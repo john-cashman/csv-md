@@ -63,16 +63,22 @@ def convert_links_to_markdown(text):
 
     return markdown_text
 
-# Function to save markdown files and create a zip folder
+# Function to save markdown files into group folders and create a zip folder
 def create_markdown_zip(df):
     # Temporary directory to store markdown files
     temp_dir = "temp_markdown_files"
     os.makedirs(temp_dir, exist_ok=True)
 
-    # Create individual markdown files
+    # Ensure the 'group' column exists
+    if "group" not in df.columns:
+        st.error("The CSV file must contain a `group` column for grouping functionality.")
+        return None
+
+    # Iterate over rows to create files
     for index, row in df.iterrows():
         title = row["article_title"]
         body = row["article_body"]
+        group = row["group"]
         
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
@@ -83,19 +89,30 @@ def create_markdown_zip(df):
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
         safe_title = safe_title.replace(" ", "-")  # Replace spaces with hyphens
         filename = f"{safe_title or 'article'}.md"  # Filename without numbers
-        
-        with open(os.path.join(temp_dir, filename), "w", encoding="utf-8") as f:
+
+        # Create group subfolder
+        group_folder = os.path.join(temp_dir, group)
+        os.makedirs(group_folder, exist_ok=True)
+
+        # Save the markdown file in the appropriate group folder
+        with open(os.path.join(group_folder, filename), "w", encoding="utf-8") as f:
             f.write(markdown_content)
-    
-    # Create a ZIP file containing all markdown files
+
+    # Create a ZIP file containing all group folders and markdown files
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file_name in os.listdir(temp_dir):
-            zipf.write(os.path.join(temp_dir, file_name), file_name)
-    
+        for root, dirs, files in os.walk(temp_dir):
+            for file_name in files:
+                full_path = os.path.join(root, file_name)
+                arcname = os.path.relpath(full_path, temp_dir)  # Preserve folder structure
+                zipf.write(full_path, arcname)
+
     # Clean up temporary directory
-    for file_name in os.listdir(temp_dir):
-        os.remove(os.path.join(temp_dir, file_name))
+    for root, dirs, files in os.walk(temp_dir, topdown=False):
+        for file_name in files:
+            os.remove(os.path.join(root, file_name))
+        for dir_name in dirs:
+            os.rmdir(os.path.join(root, dir_name))
     os.rmdir(temp_dir)
     
     zip_buffer.seek(0)
@@ -103,17 +120,17 @@ def create_markdown_zip(df):
 
 # Streamlit app
 def main():
-    st.title("CSV to Markdown File Generator 2")
+    st.title("CSV to Grouped Markdown File Generator")
 
     # Displaying instructions
     st.info("""
-    Upload a CSV file that contains two columns: `article_title` and `article_body`. 
+    Upload a CSV file that contains three columns: `article_title`, `article_body`, and `group`. 
     The file should look like this:
 
-    | article_title       | article_body        |
-    |---------------------|---------------------|
-    | Sample Title 1      | This is the content |
-    | Sample Title 2      | Another body text   |
+    | article_title       | article_body        | group      |
+    |---------------------|---------------------|------------|
+    | Sample Title 1      | This is the content | Group-1    |
+    | Sample Title 2      | Another body text   | Group-2    |
     """)
 
     # File uploader
@@ -127,23 +144,25 @@ def main():
             st.dataframe(df)
 
             # Check for required columns
-            if "article_title" in df.columns and "article_body" in df.columns:
+            required_columns = ["article_title", "article_body", "group"]
+            if all(col in df.columns for col in required_columns):
                 st.success("Found required columns!")
-
-                # Button to generate Markdown files
+                
+                # Button to generate Markdown files with groups
                 if st.button("Generate Markdown Files"):
                     zip_buffer = create_markdown_zip(df)
-
-                    # Provide download link for ZIP file
-                    st.success("Markdown files generated successfully!")
-                    st.download_button(
-                        label="Download ZIP file",
-                        data=zip_buffer,
-                        file_name="markdown_files.zip",
-                        mime="application/zip",
-                    )
+                    
+                    if zip_buffer:
+                        # Provide download link for ZIP file
+                        st.success("Markdown files generated successfully!")
+                        st.download_button(
+                            label="Download ZIP file",
+                            data=zip_buffer,
+                            file_name="markdown_files_by_group.zip",
+                            mime="application/zip",
+                        )
             else:
-                st.error("The CSV file must contain `article_title` and `article_body` columns.")
+                st.error("The CSV file must contain `article_title`, `article_body`, and `group` columns.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
