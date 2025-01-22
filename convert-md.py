@@ -28,7 +28,7 @@ def convert_callouts_to_markdown(html_body):
             content = p_tag.get_text(strip=True)
             
             # Convert to the {% hint style="info" %} format
-            hint_markdown = f"\n{% hint style=\"info\" %}\n**{title}**\n\n{content}\n{% endhint %}\n"
+            hint_markdown = f"\n{{% hint style=\"info\" %}}\n**{title}**\n\n{content}\n{{% endhint %}}\n"
             
             # Replace the callout HTML with the Markdown version
             callout.insert_before(hint_markdown)
