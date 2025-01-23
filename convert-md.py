@@ -6,15 +6,15 @@ from io import BytesIO
 import re
 from bs4 import BeautifulSoup
 
-# Function to convert article title and Body to Markdown
-def convert_to_markdown(title, Body):
-    # Parse the Body for HTML callouts and convert them
-    Body = convert_callouts_to_markdown(Body)
-    return f"# {title}\n\n{Body}"
+# Function to convert article title and body to Markdown
+def convert_to_markdown(title, body):
+    # Parse the body for HTML callouts and convert them
+    body = convert_callouts_to_markdown(body)
+    return f"# {title}\n\n{body}"
 
 # Function to convert HTML callouts to Markdown {% hint style="info" %}
-def convert_callouts_to_markdown(html_Body):
-    soup = BeautifulSoup(html_Body, "html.parser")
+def convert_callouts_to_markdown(html_body):
+    soup = BeautifulSoup(html_body, "html.parser")
     
     # Find all divs with the class 'callout callout--transparent'
     callouts = soup.find_all("div", class_="callout callout--transparent")
@@ -63,42 +63,63 @@ def convert_links_to_markdown(text):
 
     return markdown_text
 
-# Function to save markdown files into Section folders and create a zip folder
+# Function to save markdown files into section folders, create a summary file, and a zip folder
 def create_markdown_zip(df):
     # Temporary directory to store markdown files
     temp_dir = "temp_markdown_files"
     os.makedirs(temp_dir, exist_ok=True)
 
     # Ensure the required columns exist
-    if not all(col in df.columns for col in ["Article Body", "Section", "Article title"]):
-        st.error("The CSV file must contain `Article Body`, `Section`, and `Article title` columns.")
+    if not all(col in df.columns for col in ["Article Body", "Section", "Article Title"]):
+        st.error("The CSV file must contain `Article Body`, `Section`, and `Article Title` columns.")
         return None
+
+    # Dictionary to store structure for the SUMMARY.md file
+    summary_structure = {}
 
     # Iterate over rows to create files
     for index, row in df.iterrows():
-        title = row["Article title"]
-        Body = row["Article Body"]
-        Section = row["Section"]
+        title = row["Article Title"]
+        body = row["Article Body"]
+        section = row["Section"]
         
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
         
-        markdown_content = convert_to_markdown(title, Body)
+        markdown_content = convert_to_markdown(title, body)
 
         # Safe file name creation: Remove digits and replace spaces with hyphens
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
-        safe_title = safe_title.replace(" ", "-")  # Replace spaces with hyphens
+        safe_title = safe_title.replace(" ", "-").lower()  # Replace spaces with hyphens and lowercase
         filename = f"{safe_title or 'article'}.md"  # Filename without numbers
 
-        # Create Section subfolder
-        Section_folder = os.path.join(temp_dir, Section)
-        os.makedirs(Section_folder, exist_ok=True)
+        # Create section subfolder
+        section_folder = os.path.join(temp_dir, section)
+        os.makedirs(section_folder, exist_ok=True)
 
-        # Save the markdown file in the appropriate Section folder
-        with open(os.path.join(Section_folder, filename), "w", encoding="utf-8") as f:
+        # Save the markdown file in the appropriate section folder
+        file_path = os.path.join(section_folder, filename)
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(markdown_content)
 
-    # Create a ZIP file containing all Section folders and markdown files
+        # Update the summary structure
+        if section not in summary_structure:
+            summary_structure[section] = []
+        summary_structure[section].append((title, f"{section}/{filename}"))
+
+    # Create the SUMMARY.md file
+    summary_content = "# Summary\n\n"
+    for section, pages in summary_structure.items():
+        summary_content += f"## {section}\n"
+        for page_title, page_path in pages:
+            summary_content += f"* [{page_title}]({page_path})\n"
+        summary_content += "\n"
+
+    # Save SUMMARY.md in the root of temp_dir
+    with open(os.path.join(temp_dir, "SUMMARY.md"), "w", encoding="utf-8") as summary_file:
+        summary_file.write(summary_content)
+
+    # Create a ZIP file containing all section folders, markdown files, and the SUMMARY.md file
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(temp_dir):
@@ -120,17 +141,17 @@ def create_markdown_zip(df):
 
 # Streamlit app
 def main():
-    st.title("CSV to Grouped Markdown File Generator")
+    st.title("CSV to Grouped Markdown File Generator with SUMMARY.md")
 
     # Displaying instructions
     st.info("""
-    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article title`. 
+    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article Title`. 
     The file should look like this:
 
-    | Article title       | Article Body        | Section    |
+    | Article Title       | Article Body        | Section    |
     |---------------------|---------------------|------------|
-    | Sample title 1      | This is the content | Section-1  |
-    | Sample title 2      | Another Body text   | Section-2  |
+    | Sample Title 1      | This is the content | Section-1  |
+    | Sample Title 2      | Another body text   | Section-2  |
     """)
 
     # File uploader
@@ -144,11 +165,11 @@ def main():
             st.dataframe(df)
 
             # Check for required columns
-            required_columns = ["Article Body", "Section", "Article title"]
+            required_columns = ["Article Body", "Section", "Article Title"]
             if all(col in df.columns for col in required_columns):
                 st.success("Found required columns!")
                 
-                # Button to generate Markdown files with Sections
+                # Button to generate Markdown files with sections
                 if st.button("Generate Markdown Files"):
                     zip_buffer = create_markdown_zip(df)
                     
@@ -158,11 +179,11 @@ def main():
                         st.download_button(
                             label="Download ZIP file",
                             data=zip_buffer,
-                            file_name="markdown_files_by_Section.zip",
+                            file_name="markdown_files_with_summary.zip",
                             mime="application/zip",
                         )
             else:
-                st.error("The CSV file must contain `Article Body`, `Section`, and `Article title` columns.")
+                st.error("The CSV file must contain `Article Body`, `Section`, and `Article Title` columns.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
