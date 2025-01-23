@@ -82,10 +82,10 @@ def create_markdown_zip(df):
         title = row["Article Title"]
         body = row["Article Body"]
         section = row["Section"]
-
+        
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
-
+        
         markdown_content = convert_to_markdown(title, body)
 
         # Safe file name creation: Remove digits and replace spaces with hyphens
@@ -94,9 +94,7 @@ def create_markdown_zip(df):
         filename = f"{safe_title or 'article'}.md"  # Filename without numbers
 
         # Create section subfolder
-        safe_section = "".join(c for c in section if c.isalnum() or c in " -_").rstrip()
-        safe_section = safe_section.replace(" ", "-").lower()  # Replace spaces with hyphens and lowercase
-        section_folder = os.path.join(temp_dir, safe_section)
+        section_folder = os.path.join(temp_dir, section)
         os.makedirs(section_folder, exist_ok=True)
 
         # Save the markdown file in the appropriate section folder
@@ -107,7 +105,7 @@ def create_markdown_zip(df):
         # Update the summary structure
         if section not in summary_structure:
             summary_structure[section] = []
-        summary_structure[section].append((title, f"{safe_section}/{filename}"))
+        summary_structure[section].append((title, f"{section}/{filename}"))
 
     # Create the SUMMARY.md file
     summary_content = "# Summary\n\n"
@@ -150,10 +148,10 @@ def main():
     Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article Title`. 
     The file should look like this:
 
-    | Article Title       | Article Body        | Section    |
+    | Article Title       | Article Body        | Section    |
     |---------------------|---------------------|------------|
-    | Sample Title 1      | This is the content | Section-1  |
-    | Sample Title 2      | Another body text   | Section-2  |
+    | Sample Title 1      | This is the content | Section-1  |
+    | Sample Title 2      | Another body text   | Section-2  |
     """)
 
     # File uploader
@@ -188,3 +186,6 @@ def main():
                 st.error("The CSV file must contain `Article Body`, `Section`, and `Article Title` columns.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
