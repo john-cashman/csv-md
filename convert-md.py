@@ -82,10 +82,10 @@ def create_markdown_zip(df):
         title = row["Article Title"]
         body = row["Article Body"]
         section = row["Section"]
-        
+
         # Remove numbers from the title
         title = re.sub(r'\d+', '', title)  # Remove all digits from the title
-        
+
         markdown_content = convert_to_markdown(title, body)
 
         # Safe file name creation: Remove digits and replace spaces with hyphens
@@ -93,8 +93,9 @@ def create_markdown_zip(df):
         safe_title = safe_title.replace(" ", "-").lower()  # Replace spaces with hyphens and lowercase
         filename = f"{safe_title or 'article'}.md"  # Filename without numbers
 
-        # Create section subfolder
-        section_folder = os.path.join(temp_dir, section)
+        # Create section subfolder (with hyphens in section names)
+        safe_section = section.replace(" ", "-").lower() 
+        section_folder = os.path.join(temp_dir, safe_section)
         os.makedirs(section_folder, exist_ok=True)
 
         # Save the markdown file in the appropriate section folder
@@ -105,7 +106,7 @@ def create_markdown_zip(df):
         # Update the summary structure
         if section not in summary_structure:
             summary_structure[section] = []
-        summary_structure[section].append((title, f"{section}/{filename}"))
+        summary_structure[section].append((title, f"{safe_section}/{filename}"))
 
     # Create the SUMMARY.md file
     summary_content = "# Summary\n\n"
@@ -148,10 +149,10 @@ def main():
     Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article Title`. 
     The file should look like this:
 
-    | Article Title       | Article Body        | Section    |
+    | Article Title       | Article Body        | Section    |
     |---------------------|---------------------|------------|
-    | Sample Title 1      | This is the content | Section-1  |
-    | Sample Title 2      | Another body text   | Section-2  |
+    | Sample Title 1      | This is the content | Section-1  |
+    | Sample Title 2      | Another body text   | Section-2  |
     """)
 
     # File uploader
