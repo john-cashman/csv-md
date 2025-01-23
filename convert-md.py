@@ -88,12 +88,14 @@ def create_markdown_zip(df):
 
         markdown_content = convert_to_markdown(title, body)
 
-        # Safe file name creation: Remove digits
+        # Safe file name creation: Remove digits and replace spaces with hyphens
         safe_title = "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+        safe_title = safe_title.replace(" ", "-").lower()  # Replace spaces with hyphens and lowercase
         filename = f"{safe_title or 'article'}.md"  # Filename without numbers
 
-        # Create section subfolder
-        section_folder = os.path.join(temp_dir, section)
+        # Create section subfolder (with hyphens in section names)
+        safe_section = section.replace(" ", "-").lower() 
+        section_folder = os.path.join(temp_dir, safe_section)
         os.makedirs(section_folder, exist_ok=True)
 
         # Save the markdown file in the appropriate section folder
@@ -104,13 +106,12 @@ def create_markdown_zip(df):
         # Update the summary structure
         if section not in summary_structure:
             summary_structure[section] = []
-        summary_structure[section].append((title, f"{section}/{filename}"))
+        summary_structure[section].append((title, f"{safe_section}/{filename}"))
 
     # Create the SUMMARY.md file
     summary_content = "# Summary\n\n"
     for section, pages in summary_structure.items():
-        safe_section = section.replace(" ", "-").lower()  # Replace spaces in section name with hyphens
-        summary_content += f"## {safe_section}\n" 
+        summary_content += f"## {section}\n"
         for page_title, page_path in pages:
             summary_content += f"* [{page_title}]({page_path})\n"
         summary_content += "\n"
