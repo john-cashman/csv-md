@@ -146,13 +146,13 @@ def main():
 
     # Displaying instructions
     st.info("""
-    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article title`. 
+    Upload a CSV file that contains three columns: `Article Body`, `Section`, and `Article Title`. 
     The file should look like this:
 
-    | Article title       | Article Body        | Section    |
+    | Article Title       | Article Body        | Section    |
     |---------------------|---------------------|------------|
-    | Sample title 1      | This is the content | Section-1  |
-    | Sample title 2      | Another body text   | Section-2  |
+    | Sample Title 1      | This is the content | Section-1  |
+    | Sample Title 2      | Another body text   | Section-2  |
     """)
 
     # File uploader
@@ -166,7 +166,7 @@ def main():
             st.dataframe(df)
 
             # Check for required columns
-            required_columns = ["Article Body", "Section", "Article title"]
+            required_columns = ["Article Body", "Section", "Article Title"]
             if all(col in df.columns for col in required_columns):
                 st.success("Found required columns!")
                 
