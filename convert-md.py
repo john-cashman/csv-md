@@ -142,7 +142,7 @@ def create_markdown_zip(df):
 
 # Streamlit app
 def main():
-    st.title("Zendesk CSV to Markdown")
+    st.title("CSV to Markdown")
 
     # Displaying instructions
     st.info("""
