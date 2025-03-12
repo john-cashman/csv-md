@@ -142,7 +142,7 @@ def create_markdown_zip(df):
 
 # Streamlit app
 def main():
-    st.title("CSV to Grouped Markdown File Generator with SUMMARY.md")
+    st.title("Zendesk CSV to Markdown")
 
     # Displaying instructions
     st.info("""
