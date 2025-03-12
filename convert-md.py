@@ -109,7 +109,7 @@ def create_markdown_zip(df):
         summary_structure[section].append((title, f"{safe_section}/{filename}"))
 
     # Create the SUMMARY.md file
-    summary_content = "# Summary\n\n"
+    summary_content = "# Table of contents\n\n"
     for section, pages in summary_structure.items():
         summary_content += f"## {section}\n"
         for page_title, page_path in pages:
